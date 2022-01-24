@@ -1,8 +1,18 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+import "../coffeeaccesscontrol/FarmerRole.sol";
+import "../coffeeaccesscontrol/DistributorRole.sol";
+import "../coffeeaccesscontrol/RetailerRole.sol";
+import "../coffeeaccesscontrol/ConsumerRole.sol";
+
 // Define a contract 'Supplychain'
-contract SupplyChain {
+contract SupplyChain is
+    FarmerRole,
+    DistributorRole,
+    RetailerRole,
+    ConsumerRole
+{
     // Define 'owner'
     address owner;
 
@@ -85,7 +95,9 @@ contract SupplyChain {
         _;
         uint256 _price = items[_upc].productPrice;
         uint256 amountToReturn = msg.value - _price;
-        items[_upc].consumerID.transfer(amountToReturn);
+        (bool sent, ) = payable(items[_upc].consumerID).call{
+            value: amountToReturn
+        }("");
     }
 
     // Define a modifier that checks if an item.state of a upc is Harvested
@@ -139,7 +151,7 @@ contract SupplyChain {
     // In the constructor set 'owner' to the address that instantiated the contract
     // and set 'sku' to 1
     // and set 'upc' to 1
-    constructor() public payable {
+    constructor() payable {
         owner = msg.sender;
         sku = 1;
         upc = 1;
@@ -148,7 +160,7 @@ contract SupplyChain {
     // Define a function 'kill' if required
     function kill() public {
         if (msg.sender == owner) {
-            selfdestruct(owner);
+            selfdestruct(payable(owner));
         }
     }
 
@@ -237,13 +249,13 @@ contract SupplyChain {
     {
         // Update the appropriate fields - ownerID, distributorID, itemState
         Item memory item = items[_upc];
-        address _prevOwner = item.ownerID;
+        address payable _prevOwner = payable(item.ownerID);
         item.ownerID = msg.sender;
         item.distributorID = msg.sender;
         item.itemState = State.Sold;
         // Transfer money to farmer
-        msg.sender.transferFrom(_prevOwner, item.productPrice);
-        msg.sender.approve(item.productPrice);
+        (bool sent, ) = _prevOwner.call{value: item.productPrice}("");
+        require(sent, "Failed to send funds to farmer");
         items[_upc] = item;
         // emit the appropriate event
         emit Sold(_upc);
@@ -251,11 +263,7 @@ contract SupplyChain {
 
     // Define a function 'shipItem' that allows the distributor to mark an item 'Shipped'
     // Use the above modifers to check if the item is sold
-    function shipItem(uint256 _upc)
-        public
-        sold(_upc)
-        verifyCaller(msg.sender)
-    {
+    function shipItem(uint256 _upc) public sold(_upc) verifyCaller(msg.sender) {
         // Update the appropriate fields
         Item memory item = items[_upc];
         item.itemState = State.Shipped;
@@ -266,26 +274,28 @@ contract SupplyChain {
 
     // Define a function 'receiveItem' that allows the retailer to mark an item 'Received'
     // Use the above modifiers to check if the item is shipped
-    function receiveItem(uint256 _upc)
-        public
-    // Call modifier to check if upc has passed previous supply chain stage
-
-    // Access Control List enforced by calling Smart Contract / DApp
-    {
+    function receiveItem(uint256 _upc) public shipped(_upc) onlyRetailer {
         // Update the appropriate fields - ownerID, retailerID, itemState
+        Item memory item = items[_upc];
+        item.ownerID = msg.sender;
+        item.retailerID = msg.sender;
+        item.itemState = State.Received;
+        items[_upc] = item;
         // Emit the appropriate event
+        emit Received(_upc);
     }
 
     // Define a function 'purchaseItem' that allows the consumer to mark an item 'Purchased'
     // Use the above modifiers to check if the item is received
-    function purchaseItem(uint256 _upc)
-        public
-    // Call modifier to check if upc has passed previous supply chain stage
-
-    // Access Control List enforced by calling Smart Contract / DApp
-    {
+    function purchaseItem(uint256 _upc) public received(_upc) onlyConsumer {
         // Update the appropriate fields - ownerID, consumerID, itemState
+        Item memory item = items[_upc];
+        item.ownerID = msg.sender;
+        item.consumerID = msg.sender;
+        item.itemState = State.Purchased;
+        items[_upc] = item;
         // Emit the appropriate event
+        emit Purchased(_upc);
     }
 
     // Define a function 'fetchItemBufferOne' that fetches the data
@@ -304,6 +314,15 @@ contract SupplyChain {
         )
     {
         // Assign values to the 8 parameters
+        Item memory item = items[_upc];
+        itemSKU = item.sku;
+        itemUPC = item.upc;
+        ownerID = item.ownerID;
+        originFarmerID = item.originFarmerID;
+        originFarmName = item.originFarmName;
+        originFarmInformation = item.originFarmInformation;
+        originFarmLatitude = item.originFarmLatitude;
+        originFarmLongitude = item.originFarmLongitude;
 
         return (
             itemSKU,
@@ -334,6 +353,16 @@ contract SupplyChain {
         )
     {
         // Assign values to the 9 parameters
+        Item memory item = items[_upc];
+        itemSKU = item.sku;
+        itemUPC = item.upc;
+        productID = item.productID;
+        productNotes = item.productNotes;
+        productPrice = item.productPrice;
+        itemState = uint256(item.itemState);
+        distributorID = item.distributorID;
+        retailerID = item.retailerID;
+        consumerID = item.consumerID;
 
         return (
             itemSKU,
