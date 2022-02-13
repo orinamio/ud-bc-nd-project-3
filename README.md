@@ -1,20 +1,31 @@
-The contract address
-If libraries were used, include why these libraries were adopted.
-If IPFS is used, include how IPFS is used in this project.
-Program version numbers (This information will help your reviewer troubleshoot your project if any issues arise):
-node version number
-Truffle version number
-web3 version number
+# Udacity Blockchain Nanodegree Project 3
+## Project Overview
+The contract address - `0x8c1e8f207D4E45D94a1eD2da03E79E9982B2c7aE`
 
-----
+### Libraries
+dotenv - To manage environment variables
+
+### IPFS
+[IPFS](https://ipfs.io/) is used to host the UML documents for this project
+
+
+### Tools
 Truffle v5.4.29 (core: 5.4.29)
-Node v14.16.0
 
+Solidity v0.5.16 (solc-js)
 
-## Udacity Blockchain Nanodegree Project 3
+Node v16.13.2
 
-UML documents:
-Activity - actors and interactions
-Sequence - Functions
-State - Enums of asset states
-Class (Data Model) - Databases
+Web3.js v1.5.3
+
+## UML Documents
+
+[UML documents folder](https://ipfs.io/ipfs/QmS8vy9Rg62FymHqv3wvUrE21ij9piNepFWoZv9XzP7mT8)
+
+[Activity](https://ipfs.io/ipfs/QmS7BkuTqHxj6VaTeGiD5FYZJYpvsmA4FJyGMbx2o2LTja?filename=activity.png) - actors and interactions
+
+[Sequence](https://ipfs.io/ipfs/QmQ6Qeqfypt2mitAtUPj3pABtHGiq4bkdud1Xsr9scmrHc?filename=sequence.png) - Functions
+
+[State](https://ipfs.io/ipfs/QmZNw29nyVbm5iMfZcRZd6WwjHcZ14XD3KoBZL5UyZ8rBx?filename=state.png) - Enums of asset states
+
+[Class](https://ipfs.io/ipfs/QmaWP7vw7FEajyxp5VbKjnBK9eiKag389isYugs9DDTBzD?filename=class.png) (Data Model) - Databases
