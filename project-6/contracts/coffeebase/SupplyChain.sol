@@ -7,12 +7,7 @@ import "../coffeeaccesscontrol/RetailerRole.sol";
 import "../coffeeaccesscontrol/ConsumerRole.sol";
 
 // Define a contract 'Supplychain'
-contract SupplyChain is
-    FarmerRole,
-    DistributorRole,
-    RetailerRole,
-    ConsumerRole
-{
+contract SupplyChain is FarmerRole, DistributorRole, RetailerRole, ConsumerRole {
     // Define 'owner'
     address owner;
 
@@ -91,13 +86,11 @@ contract SupplyChain is
     }
 
     // Define a modifier that checks the price and refunds the remaining balance
-    modifier checkValue(uint256 _upc) {
+    modifier checkValue(uint256 _upc, address payer) {
         _;
         uint256 _price = items[_upc].productPrice;
         uint256 amountToReturn = msg.value - _price;
-        (bool sent, ) = payable(items[_upc].consumerID).call{
-            value: amountToReturn
-        }("");
+        payable(payer).transfer(amountToReturn);
     }
 
     // Define a modifier that checks if an item.state of a upc is Harvested
@@ -178,7 +171,7 @@ contract SupplyChain is
         Item memory item;
         item.sku = sku;
         item.upc = _upc;
-        item.ownerID = owner;
+        item.ownerID = _originFarmerID;
         item.originFarmerID = _originFarmerID;
         item.originFarmName = _originFarmName;
         item.originFarmInformation = _originFarmInformation;
@@ -245,17 +238,18 @@ contract SupplyChain is
         payable
         forSale(_upc)
         paidEnough(msg.value)
-        checkValue(_upc)
+        checkValue(_upc, msg.sender)
     {
         // Update the appropriate fields - ownerID, distributorID, itemState
         Item memory item = items[_upc];
-        address payable _prevOwner = payable(item.ownerID);
+        address payable farmerID = payable(item.ownerID);
         item.ownerID = msg.sender;
         item.distributorID = msg.sender;
         item.itemState = State.Sold;
+        
         // Transfer money to farmer
-        (bool sent, ) = _prevOwner.call{value: item.productPrice}("");
-        require(sent, "Failed to send funds to farmer");
+        farmerID.transfer(item.productPrice);
+
         items[_upc] = item;
         // emit the appropriate event
         emit Sold(_upc);
