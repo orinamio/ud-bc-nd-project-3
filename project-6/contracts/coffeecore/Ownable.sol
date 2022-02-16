@@ -1,10 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "../coffeebase/SupplyChain.sol";
-
 /// Provides basic authorization control
-contract Ownable is SupplyChain {
+contract Ownable {
     address private origOwner;
 
     // Define an Event
@@ -16,20 +14,10 @@ contract Ownable is SupplyChain {
         emit TransferOwnership(address(0), origOwner);
     }
 
-    /// Look up the address of the owner
-    function contractOwner() public view returns (address) {
-        return origOwner;
-    }
-
     /// Define a function modifier 'onlyOwner'
     modifier onlyContractOwner() {
-        require(isOwner());
+        require(msg.sender == origOwner);
         _;
-    }
-
-    /// Check if the calling address is the owner of the contract
-    function isOwner() public view returns (bool) {
-        return msg.sender == origOwner;
     }
 
     /// Define a function to renounce ownerhip

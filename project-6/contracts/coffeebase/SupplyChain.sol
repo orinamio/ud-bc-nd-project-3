@@ -5,24 +5,18 @@ import "../coffeeaccesscontrol/FarmerRole.sol";
 import "../coffeeaccesscontrol/DistributorRole.sol";
 import "../coffeeaccesscontrol/RetailerRole.sol";
 import "../coffeeaccesscontrol/ConsumerRole.sol";
+import "../coffeecore/Ownable.sol";
 
 // Define a contract 'Supplychain'
-contract SupplyChain is FarmerRole, DistributorRole, RetailerRole, ConsumerRole {
+contract SupplyChain is FarmerRole, DistributorRole, RetailerRole, ConsumerRole, Ownable {
     // Define 'owner'
     address owner;
-
-    // Define a variable called 'upc' for Universal Product Code (UPC)
-    uint256 upc;
 
     // Define a variable called 'sku' for Stock Keeping Unit (SKU)
     uint256 sku;
 
     // Define a public mapping 'items' that maps the UPC to an Item.
     mapping(uint256 => Item) items;
-
-    // Define a public mapping 'itemsHistory' that maps the UPC to an array of TxHash,
-    // that track its journey through the supply chain -- to be sent from DApp.
-    mapping(uint256 => string[]) itemsHistory;
 
     // Define enum 'State' with the following values:
     enum State {
@@ -35,8 +29,6 @@ contract SupplyChain is FarmerRole, DistributorRole, RetailerRole, ConsumerRole 
         Received, // 6
         Purchased // 7
     }
-
-    State constant defaultState = State.Harvested;
 
     // Define a struct 'Item' with the following fields:
     struct Item {
@@ -101,53 +93,51 @@ contract SupplyChain is FarmerRole, DistributorRole, RetailerRole, ConsumerRole 
 
     // Define a modifier that checks if an item.state of a upc is Processed
     modifier processed(uint256 _upc) {
-        require(items[upc].itemState == State.Processed);
+        require(items[_upc].itemState == State.Processed);
         _;
     }
 
     // Define a modifier that checks if an item.state of a upc is Packed
     modifier packed(uint256 _upc) {
-        require(items[upc].itemState == State.Packed);
+        require(items[_upc].itemState == State.Packed);
         _;
     }
 
     // Define a modifier that checks if an item.state of a upc is ForSale
     modifier forSale(uint256 _upc) {
-        require(items[upc].itemState == State.ForSale);
+        require(items[_upc].itemState == State.ForSale);
         _;
     }
 
     // Define a modifier that checks if an item.state of a upc is Sold
     modifier sold(uint256 _upc) {
-        require(items[upc].itemState == State.Sold);
+        require(items[_upc].itemState == State.Sold);
         _;
     }
 
     // Define a modifier that checks if an item.state of a upc is Shipped
     modifier shipped(uint256 _upc) {
-        require(items[upc].itemState == State.Shipped);
+        require(items[_upc].itemState == State.Shipped);
         _;
     }
 
     // Define a modifier that checks if an item.state of a upc is Received
     modifier received(uint256 _upc) {
-        require(items[upc].itemState == State.Received);
+        require(items[_upc].itemState == State.Received);
         _;
     }
 
     // Define a modifier that checks if an item.state of a upc is Purchased
     modifier purchased(uint256 _upc) {
-        require(items[upc].itemState == State.Purchased);
+        require(items[_upc].itemState == State.Purchased);
         _;
     }
 
     // In the constructor set 'owner' to the address that instantiated the contract
     // and set 'sku' to 1
-    // and set 'upc' to 1
     constructor() payable {
         owner = msg.sender;
         sku = 1;
-        upc = 1;
     }
 
     // Define a function 'kill' if required
@@ -166,7 +156,7 @@ contract SupplyChain is FarmerRole, DistributorRole, RetailerRole, ConsumerRole 
         string memory _originFarmLatitude,
         string memory _originFarmLongitude,
         string memory _productNotes
-    ) public {
+    ) public onlyFarmer {
         // Add the new item as part of Harvest
         Item memory item;
         item.sku = sku;
@@ -177,7 +167,7 @@ contract SupplyChain is FarmerRole, DistributorRole, RetailerRole, ConsumerRole 
         item.originFarmInformation = _originFarmInformation;
         item.originFarmLatitude = _originFarmLatitude;
         item.originFarmLongitude = _originFarmLongitude;
-        item.itemState = defaultState;
+        item.itemState = State.Harvested;
         item.productID = sku + _upc;
         item.productNotes = _productNotes;
         items[_upc] = item;
@@ -191,7 +181,7 @@ contract SupplyChain is FarmerRole, DistributorRole, RetailerRole, ConsumerRole 
     function processItem(uint256 _upc)
         public
         harvested(_upc)
-        verifyCaller(msg.sender)
+        verifyCaller(items[_upc].ownerID)
     {
         // Update the appropriate fields]
         Item memory item = items[_upc];
@@ -205,7 +195,7 @@ contract SupplyChain is FarmerRole, DistributorRole, RetailerRole, ConsumerRole 
     function packItem(uint256 _upc)
         public
         processed(_upc)
-        verifyCaller(msg.sender)
+        verifyCaller(items[_upc].ownerID)
     {
         // Update the appropriate fields]
         Item memory item = items[_upc];
@@ -219,7 +209,7 @@ contract SupplyChain is FarmerRole, DistributorRole, RetailerRole, ConsumerRole 
     function sellItem(uint256 _upc, uint256 _price)
         public
         packed(_upc)
-        verifyCaller(msg.sender)
+        verifyCaller(items[_upc].ownerID)
     {
         // Update the appropriate fields]
         Item memory item = items[_upc];
@@ -239,6 +229,7 @@ contract SupplyChain is FarmerRole, DistributorRole, RetailerRole, ConsumerRole 
         forSale(_upc)
         paidEnough(msg.value)
         checkValue(_upc, msg.sender)
+        onlyDistributor
     {
         // Update the appropriate fields - ownerID, distributorID, itemState
         Item memory item = items[_upc];
@@ -257,7 +248,12 @@ contract SupplyChain is FarmerRole, DistributorRole, RetailerRole, ConsumerRole 
 
     // Define a function 'shipItem' that allows the distributor to mark an item 'Shipped'
     // Use the above modifers to check if the item is sold
-    function shipItem(uint256 _upc) public sold(_upc) verifyCaller(msg.sender) {
+    function shipItem(uint256 _upc)
+        public
+        sold(_upc)
+        verifyCaller(items[_upc].ownerID)
+        onlyDistributor
+    {
         // Update the appropriate fields
         Item memory item = items[_upc];
         item.itemState = State.Shipped;
