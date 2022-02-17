@@ -196,6 +196,9 @@ contract("SupplyChain", function (accounts) {
 			eventEmitted = true;
 		});
 
+    // assign distributor role to msg.sender(distributorID)
+    await supplyChain.addDistributor(distributorID)
+
 		// Mark an item as Sold by calling function buyItem()
 		const paymentValue = web3.utils.toWei("1.02", "ether");
 		await supplyChain.buyItem(upc, {
@@ -255,6 +258,9 @@ contract("SupplyChain", function (accounts) {
 			eventEmitted = true;
 		});
 
+    // assign retailer role to msg.sender(retailerID)
+    await supplyChain.addRetailer(retailerID)
+
 		// Mark an item as Sold by calling function receiveItem()
 		await supplyChain.receiveItem(upc, { from: retailerID });
 
@@ -284,6 +290,9 @@ contract("SupplyChain", function (accounts) {
 		supplyChain.Purchased((err, res) => {
 			eventEmitted = true;
 		});
+
+    // assign consumer role to msg.sender(consumerID)
+    await supplyChain.addConsumer(consumerID)
 
 		// Mark an item as Sold by calling function purchaseItem()
 		await supplyChain.purchaseItem(upc, { from: consumerID });

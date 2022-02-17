@@ -47,20 +47,6 @@ contract SupplyChain is
         _;
     }
 
-    // Define a modifier that checks if the paid amount is sufficient to cover the price
-    modifier paidEnough(uint256 _price) {
-        require(msg.value >= _price);
-        _;
-    }
-
-    // Define a modifier that checks the price and refunds the remaining balance
-    modifier checkValue(uint256 _upc, address payer) {
-        _;
-        uint256 _price = coffee.items[_upc].productPrice;
-        uint256 amountToReturn = msg.value - _price;
-        payable(payer).transfer(amountToReturn);
-    }
-
     // In the constructor set 'owner' to the address that instantiated the contract
     // and set 'sku' to 1
     constructor() payable {
@@ -151,14 +137,13 @@ contract SupplyChain is
     // Define a function 'buyItem' that allows the disributor to mark an item 'Sold'
     // Use the above defined modifiers to check if the item is available for sale, if the buyer has paid enough,
     // and any excess ether sent is refunded back to the buyer
-    function buyItem(uint256 _upc)
-        public
-        payable
-        paidEnough(coffee.getItem(_upc).productPrice)
-        checkValue(_upc, msg.sender)
-        onlyDistributor
-    {
-        require(coffee.forSale(_upc));
+    function buyItem(uint256 _upc) public payable onlyDistributor {
+        require(coffee.forSale(_upc)); // is for sale
+        require(msg.value >= coffee.items[_upc].productPrice); // checks if the paid amount is sufficient to cover the price
+        payable(msg.sender).transfer(
+            msg.value - coffee.items[_upc].productPrice
+        ); // refund the remaining balance
+
         // Update the appropriate fields - ownerID, distributorID, itemState
         Item memory item = coffee.getItem(_upc);
         address payable farmerID = payable(item.ownerID);
@@ -193,7 +178,7 @@ contract SupplyChain is
     // Define a function 'receiveItem' that allows the retailer to mark an item 'Received'
     // Use the above modifiers to check if the item is shipped
     function receiveItem(uint256 _upc) public onlyRetailer {
-        require(coffee.received(_upc));
+        require(coffee.shipped(_upc));
         // Update the appropriate fields - ownerID, retailerID, itemState
         Item memory item = coffee.getItem(_upc);
         item.ownerID = msg.sender;
@@ -207,7 +192,7 @@ contract SupplyChain is
     // Define a function 'purchaseItem' that allows the consumer to mark an item 'Purchased'
     // Use the above modifiers to check if the item is received
     function purchaseItem(uint256 _upc) public onlyConsumer {
-        require(coffee.purchased(_upc));
+        require(coffee.received(_upc));
         // Update the appropriate fields - ownerID, consumerID, itemState
         Item memory item = coffee.getItem(_upc);
         item.ownerID = msg.sender;
